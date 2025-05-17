@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>食べたいもの診断</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 20px;
+      }
+      .question {
+        margin-top: 20px;
+        font-weight: bold;
+      }
+      .choices button {
+        margin: 5px;
+        padding: 10px;
+      }
+      ul#items {
+        padding-left: 0;
+        list-style-type: none;
+      }
+      .item {
+        padding: 5px 10px;
+        margin: 4px 0;
+        border-bottom: 1px solid #ccc;
+      }
+      #history {
+        margin-top: 30px;
+      }
+      #history p {
+        margin: 2px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>なにたべよ</h1>
+
+    <div id="question" class="question"></div>
+    <div class="choices" id="choices"></div>
+
+    <div id="history"></div>
+
+    <div id="items"></div>
+
+    <script>
+      const items = [
+        { name: "カレー", tags: ["味が濃い", "アジア", "あたたかい"] },
+        { name: "寿司", tags: ["あっさり", "和食", "冷たい"] },
+        { name: "ラーメン", tags: ["こってり", "中華", "あたたかい"] },
+        { name: "ピザ", tags: ["こってり", "洋食", "あたたかい"] },
+        { name: "サラダ", tags: ["あっさり", "洋食", "冷たい"] },
+      ];
+
+      const questions = [
+        {
+          text: "こってり or あっさり？",
+          choices: ["こってり", "あっさり"],
+        },
+        {
+          text: "ジャンルは？",
+          choices: ["和食", "洋食", "中華", "アジア"],
+        },
+        {
+          text: "温かい？冷たい？",
+          choices: ["あたたかい", "冷たい"],
+        },
+      ];
+
+      let currentQuestion = 0;
+      let filteredItems = [...items];
+      let answerHistory = [];
+
+      function updateHistory(questionText, answer) {
+        answerHistory.push({ question: questionText, answer });
+        const historyDiv = document.getElementById("history");
+        const p = document.createElement("p");
+        p.textContent = `${questionText} → ${answer}`;
+        historyDiv.appendChild(p);
+      }
+
+      function displayItems() {
+        const container = document.getElementById("items");
+        container.innerHTML = "";
+        filteredItems.forEach((item) => {
+          const li = document.createElement("li");
+          li.className = "item";
+          li.textContent = item.name;
+          container.appendChild(li);
+        });
+      }
+
+      function showQuestion() {
+        if (currentQuestion >= questions.length || filteredItems.length <= 1) {
+          document.getElementById("question").innerText =
+            "おすすめ： " + (filteredItems[0]?.name || "なし");
+          document.getElementById("choices").innerHTML = "";
+          return;
+        }
+
+        const q = questions[currentQuestion];
+        document.getElementById("question").innerText = q.text;
+        const choicesDiv = document.getElementById("choices");
+        choicesDiv.innerHTML = "";
+        q.choices.forEach((choice) => {
+          const btn = document.createElement("button");
+          btn.textContent = choice;
+          btn.onclick = () => {
+            updateHistory(q.text, choice);
+            filteredItems = filteredItems.filter((item) =>
+              item.tags.includes(choice)
+            );
+            currentQuestion++;
+            displayItems();
+            showQuestion();
+          };
+          choicesDiv.appendChild(btn);
+        });
+      }
+
+      displayItems();
+      showQuestion();
+    </script>
+  </body>
+</html>

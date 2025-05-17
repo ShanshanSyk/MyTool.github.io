@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>読書記録アプリ</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        padding: 20px;
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      input,
+      textarea,
+      button,
+      select {
+        display: block;
+        width: 100%;
+        margin: 10px 0;
+        padding: 10px;
+        font-size: 1rem;
+        box-sizing: border-box;
+      }
+      .book-list {
+        margin-top: 20px;
+      }
+      .book-item {
+        cursor: pointer;
+        margin: 5px 0;
+        padding: 8px;
+        background: #f0f0f0;
+        border-radius: 4px;
+      }
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+      }
+      .modal-content {
+        background: white;
+        padding: 20px;
+        margin: 50px auto;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 6px;
+      }
+      .random-box {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px dashed #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>読書記録アプリ</h1>
+
+    <div class="random-box">
+      <h2>本を指定</h2>
+      <button onclick="suggestBook()">ランダムで本を選ぶ</button>
+      <p id="suggestion"></p>
+    </div>
+
+    <h2>本を登録</h2>
+    <label for="title">タイトル</label>
+    <input id="title" />
+    <label for="author">作者</label>
+    <input id="author" />
+    <label for="startDate">読み始めた日</label>
+    <input id="startDate" type="date" />
+    <button onclick="addBook()">登録</button>
+
+    <h2>未読了の本</h2>
+    <div class="book-list" id="unreadList"></div>
+
+    <h2>読了した本</h2>
+    <div class="book-list" id="readList"></div>
+
+    <!-- モーダル -->
+    <div class="modal" id="bookModal">
+      <div class="modal-content">
+        <h3 id="modalTitle"></h3>
+        <p>作者: <span id="modalAuthor"></span></p>
+        <p>読み始めた日: <span id="modalStart"></span></p>
+        <label for="finishDate">読了日</label>
+        <input id="finishDate" type="date" />
+        <label for="thoughts">感想</label>
+        <textarea id="thoughts" rows="4"></textarea>
+        <button onclick="saveThoughts()">保存</button>
+        <button onclick="closeModal()">閉じる</button>
+      </div>
+    </div>
+
+    <script>
+      let books = JSON.parse(localStorage.getItem("books") || "[]");
+      let currentBookIndex = null;
+
+      function addBook() {
+        const title = document.getElementById("title").value;
+        const author = document.getElementById("author").value;
+        const startDate = document.getElementById("startDate").value;
+
+        if (!title || !author || !startDate) {
+          alert("タイトル・作者・読み始め日を入力してください");
+          return;
+        }
+
+        books.push({
+          title,
+          author,
+          startDate,
+          finishDate: null,
+          thoughts: "",
+        });
+        localStorage.setItem("books", JSON.stringify(books));
+        document.getElementById("title").value = "";
+        document.getElementById("author").value = "";
+        document.getElementById("startDate").value = "";
+        renderLists();
+      }
+
+      function renderLists() {
+        const unreadList = document.getElementById("unreadList");
+        const readList = document.getElementById("readList");
+        unreadList.innerHTML = "";
+        readList.innerHTML = "";
+
+        books.forEach((book, index) => {
+          const div = document.createElement("div");
+          div.className = "book-item";
+          div.textContent = book.title;
+          div.onclick = () => openModal(index);
+
+          if (!book.finishDate) {
+            unreadList.appendChild(div);
+          } else {
+            const readInfo = `${book.title} ${book.author}（${book.finishDate}）`;
+            div.textContent = readInfo;
+            readList.appendChild(div);
+          }
+        });
+      }
+
+      function openModal(index) {
+        currentBookIndex = index;
+        const book = books[index];
+        document.getElementById("modalTitle").textContent = book.title;
+        document.getElementById("modalAuthor").textContent = book.author;
+        document.getElementById("modalStart").textContent = book.startDate;
+        document.getElementById("finishDate").value = book.finishDate || "";
+        document.getElementById("thoughts").value = book.thoughts || "";
+        document.getElementById("bookModal").style.display = "block";
+      }
+
+      function closeModal() {
+        document.getElementById("bookModal").style.display = "none";
+      }
+
+      function saveThoughts() {
+        const finishDate = document.getElementById("finishDate").value;
+        const thoughts = document.getElementById("thoughts").value;
+        books[currentBookIndex].finishDate = finishDate;
+        books[currentBookIndex].thoughts = thoughts;
+        localStorage.setItem("books", JSON.stringify(books));
+        closeModal();
+        renderLists();
+      }
+
+      function suggestBook() {
+        const kana =
+          "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわ";
+        const pickKana = kana[Math.floor(Math.random() * kana.length)];
+        const charOptions = [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          "15以上",
+        ];
+        const maxChars =
+          charOptions[Math.floor(Math.random() * charOptions.length)];
+
+        const message = `作者の頭文字が「${pickKana}」で${maxChars}文字の本を読む`;
+        document.getElementById("suggestion").textContent = message;
+      }
+
+      renderLists();
+    </script>
+  </body>
+</html>

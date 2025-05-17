@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ルーレット</title>
+    <style>
+      body {
+        background-color: #001f3f;
+        color: #ffffff;
+        font-family: "Arial Black", sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        padding: 40px;
+      }
+
+      h1 {
+        color: #7fdbff;
+        margin-bottom: 20px;
+      }
+
+      textarea,
+      input {
+        width: 300px;
+        font-size: 1rem;
+        margin-bottom: 10px;
+        padding: 10px;
+        border: none;
+        border-radius: 6px;
+      }
+
+      textarea {
+        height: 120px;
+      }
+
+      #rouletteBox {
+        overflow: hidden;
+        height: 150px;
+        border: 2px solid #7fdbff;
+        margin: 20px 0;
+        width: 300px;
+        position: relative;
+        background-color: #001f3f;
+        margin-bottom: 40px;
+        display: flex;
+        justify-content: center;
+      }
+
+      #rouletteList {
+        position: relative;
+        transition: transform 3s ease-out;
+      }
+
+      .rouletteItem {
+        height: 40px;
+        line-height: 40px;
+        font-size: 1.5rem;
+        color: #7fdbff;
+        text-align: center;
+      }
+
+      .highlight {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #7fdbff;
+      }
+
+      button {
+        padding: 10px 25px;
+        font-size: 1.2rem;
+        border: none;
+        border-radius: 6px;
+        background-color: #39cccc;
+        color: #001f3f;
+        font-weight: bold;
+        cursor: pointer;
+        margin-bottom: 40px;
+      }
+
+      button:hover {
+        background-color: #3d9970;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ルーレット</h1>
+
+    <div id="rouletteBox">
+      <div id="rouletteList"></div>
+    </div>
+
+    <button onclick="startRoulette()">スタート</button>
+
+    <textarea id="names" placeholder="リスト改行で追加"></textarea><br />
+    <input id="cheatName" placeholder="強制選択したいワード" /><br />
+
+    <script>
+      function startRoulette() {
+        const nameText = document.getElementById("names").value;
+        const cheatName = document.getElementById("cheatName").value.trim();
+        const nameList = nameText
+          .split("\n")
+          .map((n) => n.trim())
+          .filter((n) => n);
+
+        if (nameList.length === 0) {
+          alert("未入力だよ");
+          return;
+        }
+
+        const list = document.getElementById("rouletteList");
+        list.innerHTML = ""; // リストをクリア
+
+        const cycles = 5;
+        const totalItems = nameList.length * cycles;
+        const finalIndex =
+          cheatName && nameList.includes(cheatName)
+            ? nameList.indexOf(cheatName) + nameList.length * (cycles - 1)
+            : Math.floor(Math.random() * nameList.length) +
+              nameList.length * (cycles - 1);
+
+        // リストアイテムの生成
+        for (let i = 0; i < totalItems; i++) {
+          const item = document.createElement("div");
+          item.className = "rouletteItem";
+          item.textContent = nameList[i % nameList.length];
+          list.appendChild(item);
+        }
+
+        // スクロール距離の計算
+        const itemHeight = 40;
+        const rouletteBox = document.getElementById("rouletteBox");
+        const scrollY =
+          -finalIndex * itemHeight +
+          (rouletteBox.offsetHeight / 2 - itemHeight / 2);
+
+        // アニメーションの準備
+        list.style.transition = "none"; // transitionを一度リセット
+        list.style.transform = "translateY(0px)";
+        void list.offsetWidth; // レイアウトを強制的に再計算
+        list.style.transition = "transform 3s ease-out"; // 再設定
+
+        // アニメーション開始
+        requestAnimationFrame(() => {
+          list.style.transform = `translateY(${scrollY}px)`;
+        });
+
+        // ハイライト処理（アニメ後）
+        setTimeout(() => {
+          const items = document.querySelectorAll(".rouletteItem");
+          items.forEach((el, i) => {
+            el.classList.remove("highlight");
+            if (i === finalIndex) el.classList.add("highlight");
+          });
+        }, 3100);
+      }
+    </script>
+  </body>
+</html>
