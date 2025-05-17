@@ -31,6 +31,22 @@
         padding: 8px;
         background: #f0f0f0;
         border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .book-item div.text {
+        flex-grow: 1;
+        cursor: pointer;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .book-item button {
+        flex-shrink: 0;
+        margin-left: 5px;
+        padding: 4px 8px;
+        font-size: 0.9rem;
       }
       .modal {
         display: none;
@@ -54,6 +70,18 @@
         margin-top: 20px;
         padding: 10px;
         border: 1px dashed #666;
+      }
+      button.delete-btn {
+        background-color: #e53935;
+        color: white;
+        border: none;
+        cursor: pointer;
+        padding: 10px;
+        font-weight: bold;
+        border-radius: 4px;
+      }
+      button.delete-btn:hover {
+        background-color: #b71c1c;
       }
     </style>
   </head>
@@ -81,6 +109,15 @@
     <h2>読了した本</h2>
     <div class="book-list" id="readList"></div>
 
+    <!-- CSV操作ボタン -->
+    <h2>記録を</h2>
+    <div style="margin-top: 10px; font-weight: bold">ダウンロードする</div>
+    <div style="margin-top: 20px">
+      <button onclick="downloadCSV()">ダウンロード</button>
+      <div style="margin-top: 10px; font-weight: bold">インポートする</div>
+      <input type="file" accept=".csv,text/csv" onchange="importCSV(event)" />
+    </div>
+
     <!-- モーダル -->
     <div class="modal" id="bookModal">
       <div class="modal-content">
@@ -92,6 +129,7 @@
         <label for="thoughts">感想</label>
         <textarea id="thoughts" rows="4"></textarea>
         <button onclick="saveThoughts()">保存</button>
+        <button class="delete-btn" onclick="deleteBook()">削除</button>
         <button onclick="closeModal()">閉じる</button>
       </div>
     </div>
@@ -101,12 +139,12 @@
       let currentBookIndex = null;
 
       function addBook() {
-        const title = document.getElementById("title").value;
-        const author = document.getElementById("author").value;
+        const title = document.getElementById("title").value.trim();
+        const author = document.getElementById("author").value.trim();
         const startDate = document.getElementById("startDate").value;
 
         if (!title || !author || !startDate) {
-          alert("タイトル・作者・読み始め日を入力してください");
+          alert("タイトル・作者・読み始めた日を入力してください");
           return;
         }
 
@@ -133,14 +171,19 @@
         books.forEach((book, index) => {
           const div = document.createElement("div");
           div.className = "book-item";
-          div.textContent = book.title;
-          div.onclick = () => openModal(index);
+
+          const textDiv = document.createElement("div");
+          textDiv.className = "text";
+          textDiv.textContent = !book.finishDate
+            ? book.title
+            : `${book.title} ${book.author}（${book.finishDate}）`;
+          textDiv.onclick = () => openModal(index);
+
+          div.appendChild(textDiv);
 
           if (!book.finishDate) {
             unreadList.appendChild(div);
           } else {
-            const readInfo = `${book.title} ${book.author}（${book.finishDate}）`;
-            div.textContent = readInfo;
             readList.appendChild(div);
           }
         });
@@ -164,11 +207,27 @@
       function saveThoughts() {
         const finishDate = document.getElementById("finishDate").value;
         const thoughts = document.getElementById("thoughts").value;
+        if (currentBookIndex === null) return;
+
         books[currentBookIndex].finishDate = finishDate;
         books[currentBookIndex].thoughts = thoughts;
         localStorage.setItem("books", JSON.stringify(books));
         closeModal();
         renderLists();
+      }
+
+      function deleteBook() {
+        if (currentBookIndex === null) return;
+        const book = books[currentBookIndex];
+        if (confirm(`「${book.title}」を本当に削除しますか？`)) {
+          books.splice(currentBookIndex, 1);
+          localStorage.setItem("books", JSON.stringify(books));
+          closeModal();
+          renderLists();
+        } else {
+          // 「いいえ」の場合は何もしないでモーダルに戻る
+          // モーダルは閉じないので特に処理不要
+        }
       }
 
       function suggestBook() {
@@ -195,8 +254,77 @@
         const maxChars =
           charOptions[Math.floor(Math.random() * charOptions.length)];
 
-        const message = `作者名が「${pickKana}」から始まるタイトルが${maxChars}文字の本を読む`;
-        document.getElementById("suggestion").textContent = message;
+        const message = `作者名が <strong>「${pickKana}」</strong> から始まるタイトルが<br><strong>${maxChars}文字</strong>の本を読む`;
+        document.getElementById("suggestion").innerHTML = message;
+      }
+
+      // CSVダウンロード
+      function downloadCSV() {
+        if (books.length === 0) {
+          alert("データがありません");
+          return;
+        }
+        const header = [
+          "title",
+          "author",
+          "startDate",
+          "finishDate",
+          "thoughts",
+        ];
+        const csvRows = [
+          header.join(","),
+          ...books.map((b) =>
+            header
+              .map((field) => {
+                let val = b[field] || "";
+                if (
+                  typeof val === "string" &&
+                  (val.includes(",") || val.includes("\n"))
+                ) {
+                  val = `"${val.replace(/"/g, '""')}"`;
+                }
+                return val;
+              })
+              .join(",")
+          ),
+        ];
+        const csvString = csvRows.join("\n");
+        const blob = new Blob([csvString], { type: "text/csv" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "books.csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      // CSVインポート
+      function importCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const text = e.target.result;
+          const lines = text.split(/\r?\n/);
+          const header = lines[0].split(",");
+          const newBooks = [];
+          for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const values = lines[i]
+              .split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
+              .map((v) => v.replace(/^"|"$/g, "").replace(/""/g, '"'));
+            const book = {};
+            header.forEach((h, idx) => {
+              book[h] = values[idx] || "";
+            });
+            newBooks.push(book);
+          }
+          books = books.concat(newBooks);
+          localStorage.setItem("books", JSON.stringify(books));
+          renderLists();
+          event.target.value = "";
+        };
+        reader.readAsText(file);
       }
 
       renderLists();
