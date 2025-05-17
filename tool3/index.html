@@ -254,7 +254,7 @@
         const maxChars =
           charOptions[Math.floor(Math.random() * charOptions.length)];
 
-        const message = `作者名が <strong>「${pickKana}」</strong> から始まるタイトルが<br><strong>${maxChars}文字</strong>の本を読む`;
+        const message = `作者名が <strong>「${pickKana}」</strong> から始まる<br><strong>タイトルが${maxChars}文字</strong>の本を読む`;
         document.getElementById("suggestion").innerHTML = message;
       }
 
