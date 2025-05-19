@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <title>編み物管理ツール</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 2em;
+        background: #f2f0e6;
+        font-family: "M PLUS Rounded 1c", sans-serif;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .work {
+        background: #fffaf4;
+        border: 3px double #6b4c3b;
+        border-radius: 14px;
+        padding: 1.5em;
+        margin-bottom: 1.5em;
+        box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.15);
+      }
+      .work > h2 {
+        margin-top: 0;
+        cursor: pointer;
+        user-select: none;
+      }
+      label {
+        font-weight: bold;
+        color: #4c3228;
+        display: block;
+        margin-top: 0.8em;
+        margin-bottom: 0.2em;
+      }
+      input[type="text"],
+      input[type="date"],
+      input[type="number"],
+      textarea {
+        width: 100%;
+        padding: 0.6em;
+        border: 1px solid #bda89f;
+        border-radius: 8px;
+        font-size: 1em;
+        background-color: #fdfaf7;
+        font-family: "M PLUS Rounded 1c", sans-serif;
+        box-sizing: border-box;
+      }
+      textarea {
+        resize: vertical;
+      }
+      button {
+        margin-top: 1em;
+        background: #942435;
+        border: none;
+        color: white;
+        padding: 0.6em 1.2em;
+        font-weight: bold;
+        border-radius: 6px;
+        font-size: 1em;
+        cursor: pointer;
+      }
+      .parts {
+        margin-top: 1em;
+        padding-top: 1em;
+        border-top: 1px solid #bda89f;
+      }
+      .part {
+        background: #f9f4e7;
+        padding: 1em;
+        margin-bottom: 1em;
+        border-radius: 10px;
+      }
+      .counter-controls {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5em;
+        margin-top: 0.5em;
+      }
+      .counter-controls button {
+        background-color: #932f3b;
+        color: white;
+        font-size: 1.3em;
+        border: none;
+        border-radius: 0.3em;
+        padding: 0.3em 0.6em;
+        min-width: 2.4em;
+      }
+      .counter-controls button {
+        font-family: monospace;
+        font-size: 3em;
+      }
+      .count-display {
+        font-size: 5em;
+        font-weight: bold;
+        min-width: 2em;
+        text-align: center;
+      }
+      .toggle-parts {
+        margin-top: 0.8em;
+        background: #6b4c3b;
+        color: #fffaf4;
+        border-radius: 8px;
+        padding: 0.4em 1em;
+        font-weight: bold;
+        cursor: pointer;
+        user-select: none;
+        width: fit-content;
+      }
+      .add-part-btn {
+        background: #4a7a44;
+        margin-top: 0.8em;
+      }
+      .reset-btn {
+        background: #b93131;
+        margin-bottom: 2em;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="margin-bottom: 1.5em">
+      <label for="newTitle">新しい作品名</label>
+      <input type="text" id="newTitle" placeholder="作品名を入力してください" />
+      <button onclick="registerNewWork()">登録</button>
+    </div>
+
+    <div id="worksContainer"></div>
+
+    <script>
+      // Load saved data or start fresh
+      let worksData = JSON.parse(localStorage.getItem("knittingWorks") || "[]");
+
+      function saveData() {
+        localStorage.setItem("knittingWorks", JSON.stringify(worksData));
+      }
+
+      function registerNewWork() {
+        const titleInput = document.getElementById("newTitle");
+        const newTitle = titleInput.value.trim();
+
+        if (newTitle === "") {
+          alert("作品名を入力してください");
+          return;
+        }
+
+        worksData.push({
+          title: newTitle,
+          startDate: "",
+          finishDate: "",
+          memo: "",
+          parts: [],
+          showParts: true,
+        });
+
+        titleInput.value = "";
+        saveData();
+        renderWorks();
+      }
+
+      function addWork() {
+        worksData.push({
+          title: "",
+          startDate: "",
+          finishDate: "",
+          memo: "",
+          parts: [],
+          showParts: true,
+        });
+        saveData();
+        renderWorks();
+      }
+
+      function addPart(workIndex) {
+        worksData[workIndex].parts.push({
+          partName: "",
+          currentCount: 0,
+          goalCount: 10,
+          memo: "",
+        });
+        saveData();
+        renderWorks();
+      }
+
+      function toggleParts(workIndex) {
+        worksData[workIndex].showParts = !worksData[workIndex].showParts;
+        saveData();
+        renderWorks();
+      }
+
+      function changeWorkData(workIndex, field, value) {
+        worksData[workIndex][field] = value;
+        saveData();
+      }
+
+      function changePartData(workIndex, partIndex, field, value) {
+        if (field === "currentCount" || field === "goalCount") {
+          value = parseInt(value);
+          if (isNaN(value) || value < 0) value = 0;
+        }
+        worksData[workIndex].parts[partIndex][field] = value;
+        saveData();
+      }
+
+      function changeCount(workIndex, partIndex, delta) {
+        let current =
+          worksData[workIndex].parts[partIndex].currentCount + delta;
+        if (current < 0) current = 0;
+        worksData[workIndex].parts[partIndex].currentCount = current;
+        saveData();
+        renderWorks();
+      }
+
+      function removePart(workIndex, partIndex) {
+        if (confirm("このパーツを削除しますか？")) {
+          worksData[workIndex].parts.splice(partIndex, 1);
+          saveData();
+          renderWorks();
+        }
+      }
+
+      function removeWork(workIndex) {
+        if (
+          confirm("この作品を削除しますか？（中のパーツもすべて削除されます）")
+        ) {
+          worksData.splice(workIndex, 1);
+          saveData();
+          renderWorks();
+        }
+      }
+
+      function renderWorks() {
+        const container = document.getElementById("worksContainer");
+        container.innerHTML = "";
+
+        worksData.forEach((work, wi) => {
+          if (!work.title) return; // タイトルが空ならスキップ
+
+          const workDiv = document.createElement("div");
+          workDiv.className = "work";
+
+          // Title + delete
+          const titleH2 = document.createElement("h2");
+          titleH2.textContent = work.title || "(無題の作品)";
+          titleH2.onclick = () => toggleParts(wi);
+          workDiv.appendChild(titleH2);
+
+          const delWorkBtn = document.createElement("button");
+          delWorkBtn.textContent = "作品削除";
+          delWorkBtn.style.backgroundColor = "#942435";
+          delWorkBtn.style.marginBottom = "0.6em";
+          delWorkBtn.onclick = (e) => {
+            e.stopPropagation();
+            removeWork(wi);
+          };
+          workDiv.appendChild(delWorkBtn);
+
+          // Editable fields
+          const fields = [
+            { label: "作品名", type: "text", field: "title" },
+            { label: "着手日", type: "date", field: "startDate" },
+            { label: "完了日", type: "date", field: "finishDate" },
+            { label: "メモ", type: "textarea", field: "memo" },
+          ];
+          fields.forEach(({ label, type, field }) => {
+            const labelEl = document.createElement("label");
+            labelEl.textContent = label;
+            workDiv.appendChild(labelEl);
+            let input;
+            if (type === "textarea") {
+              input = document.createElement("textarea");
+              input.rows = 3;
+            } else {
+              input = document.createElement("input");
+              input.type = type;
+            }
+            input.value = work[field] || "";
+            input.oninput = (e) => changeWorkData(wi, field, e.target.value);
+            workDiv.appendChild(input);
+          });
+
+          // 作る（子パーツ表示切替）
+          const toggleBtn = document.createElement("div");
+          toggleBtn.textContent = work.showParts
+            ? "パーツを隠す ▲"
+            : "パーツを表示 ▼";
+          toggleBtn.className = "toggle-parts";
+          toggleBtn.onclick = () => toggleParts(wi);
+          workDiv.appendChild(toggleBtn);
+
+          // 子パーツリスト
+          if (work.showParts) {
+            const partsDiv = document.createElement("div");
+            partsDiv.className = "parts";
+
+            work.parts.forEach((part, pi) => {
+              const partDiv = document.createElement("div");
+              partDiv.className = "part";
+
+              // パーツ名
+              const pnLabel = document.createElement("label");
+              pnLabel.textContent = "パーツ名";
+              partDiv.appendChild(pnLabel);
+              const pnInput = document.createElement("input");
+              pnInput.type = "text";
+              pnInput.value = part.partName;
+              pnInput.oninput = (e) =>
+                changePartData(wi, pi, "partName", e.target.value);
+              partDiv.appendChild(pnInput);
+
+              const controls = document.createElement("div");
+              controls.className = "counter-controls";
+
+              // マイナスボタン
+              const decBtn = document.createElement("button");
+              decBtn.textContent = "−";
+              decBtn.onclick = () => changeCount(wi, pi, -1);
+              controls.appendChild(decBtn);
+
+              // カウント表示
+              const ccDisplay = document.createElement("div");
+              ccDisplay.className = "count-display";
+              ccDisplay.textContent = part.currentCount;
+              controls.appendChild(ccDisplay);
+
+              // プラスボタン
+              const incBtn = document.createElement("button");
+              incBtn.textContent = "＋";
+              incBtn.onclick = () => changeCount(wi, pi, +1);
+              controls.appendChild(incBtn);
+
+              // controlsごとパーツに追加
+              partDiv.appendChild(controls);
+
+              // 目標段数
+              const goalLabel = document.createElement("label");
+              goalLabel.textContent = "目標段数";
+              partDiv.appendChild(goalLabel);
+              const goalInput = document.createElement("input");
+              goalInput.type = "number";
+              goalInput.min = 0;
+              goalInput.value = part.goalCount;
+              goalInput.oninput = (e) =>
+                changePartData(wi, pi, "goalCount", e.target.value);
+              partDiv.appendChild(goalInput);
+
+              // メモ（短文）
+              const memoLabel = document.createElement("label");
+              memoLabel.textContent = "メモ";
+              partDiv.appendChild(memoLabel);
+              const memoInput = document.createElement("input");
+              memoInput.type = "text";
+              memoInput.value = part.memo;
+              memoInput.oninput = (e) =>
+                changePartData(wi, pi, "memo", e.target.value);
+              partDiv.appendChild(memoInput);
+
+              // パーツ削除ボタン
+              const delPartBtn = document.createElement("button");
+              delPartBtn.textContent = "パーツ削除";
+              delPartBtn.style.backgroundColor = "#942435";
+              delPartBtn.onclick = () => removePart(wi, pi);
+              partDiv.appendChild(delPartBtn);
+
+              // 達成時の色変更（現在段数が目標以上なら）
+              if (part.currentCount >= part.goalCount && part.goalCount > 0) {
+                partDiv.style.backgroundColor = "#d4f1be"; // 緑がかった色で達成感
+              }
+
+              partsDiv.appendChild(partDiv);
+            });
+
+            // 子パーツ追加ボタン
+            const addPartBtn = document.createElement("button");
+            addPartBtn.textContent = "＋ パーツを追加";
+            addPartBtn.className = "add-part-btn";
+            addPartBtn.onclick = () => addPart(wi);
+            partsDiv.appendChild(addPartBtn);
+
+            workDiv.appendChild(partsDiv);
+          }
+
+          container.appendChild(workDiv);
+        });
+      }
+
+      // 初期表示
+      renderWorks();
+    </script>
+  </body>
+</html>
